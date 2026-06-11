@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The d20 Oracle</title>
+<meta name="description" content="Ask a question. Roll the die. Fate decides.">
+<meta name="theme-color" content="#14121A">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="d20 Oracle">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Crimson+Pro:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14121A;
+    --panel: #1D1A27;
+    --line: #322D40;
+    --parchment: #E8E0CE;
+    --muted: #8E8674;
+    --gold: #D4A14A;
+    --crit: #D24B43;
+    --bad: #C2683A;
+    --murky: #C99A3F;
+    --good: #56A87E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--ink); }
+  body {
+    background: var(--ink);
+    color: var(--parchment);
+    font-family: "Crimson Pro", Georgia, serif;
+    font-size: 18px;
+    line-height: 1.6;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: max(env(safe-area-inset-top), 20px) 20px max(env(safe-area-inset-bottom), 28px);
+  }
+  main { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; }
+
+  header { text-align: center; margin: 8px 0 4px; }
+  h1 {
+    font-family: Cinzel, Georgia, serif;
+    font-weight: 600;
+    font-size: 21px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .sub { color: var(--muted); font-style: italic; font-size: 16px; margin-top: 2px; }
+
+  .die-stage { position: relative; margin: 18px 0 6px; }
+  #die { display: block; width: min(62vw, 250px); height: auto; transition: filter 0.4s; }
+  #die.rolling { animation: tumble 0.12s linear infinite; }
+  #die.nat20 { filter: drop-shadow(0 0 18px rgba(212,161,74,0.55)); }
+  #die.nat1  { filter: drop-shadow(0 0 14px rgba(210,75,67,0.45)); }
+  @keyframes tumble {
+    0%   { transform: rotate(-3deg) scale(0.985); }
+    50%  { transform: rotate(3deg)  scale(1.01); }
+    100% { transform: rotate(-3deg) scale(0.985); }
+  }
+  #dieNum {
+    font-family: Cinzel, Georgia, serif;
+    font-weight: 600;
+    font-size: 64px;
+    fill: var(--parchment);
+  }
+
+  .verdict { text-align: center; min-height: 96px; padding: 0 8px; }
+  .tier {
+    font-family: Cinzel, Georgia, serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .line { font-size: 21px; font-weight: 500; margin-top: 6px; }
+  .line em { font-style: italic; font-weight: 400; }
+
+  form { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--parchment);
+    font: italic 500 18px "Crimson Pro", Georgia, serif;
+    padding: 13px 16px;
+    text-align: center;
+    outline: none;
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+  input[type="text"]:focus-visible { border-color: var(--gold); }
+  button.roll {
+    width: 100%;
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    border-radius: 10px;
+    font-family: Cinzel, Georgia, serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 15px;
+    cursor: pointer;
+    transition: transform 0.08s, opacity 0.2s;
+  }
+  button.roll:active { transform: scale(0.98); }
+  button.roll:disabled { opacity: 0.45; cursor: default; }
+  button.roll:focus-visible { outline: 2px solid var(--parchment); outline-offset: 2px; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px;
+    margin-top: 18px; font-size: 14px; color: var(--muted);
+  }
+  .legend b { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 12px; }
+
+  section.history { width: 100%; margin-top: 26px; }
+  .history h2 {
+    font-family: Cinzel, Georgia, serif;
+    font-weight: 500; font-size: 12px;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted); text-align: center;
+    margin-bottom: 10px;
+  }
+  .history h2::before, .history h2::after { content: " — "; color: var(--line); }
+  #log { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  #log li {
+    display: flex; align-items: baseline; gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 16px;
+  }
+  #log .n { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 17px; min-width: 26px; text-align: center; }
+  #log .q { color: var(--parchment); flex: 1; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #log .empty { justify-content: center; color: var(--muted); font-style: italic; border-style: dashed; }
+  button.clear {
+    background: none; border: none; color: var(--muted);
+    font: italic 400 14px "Crimson Pro", Georgia, serif;
+    margin: 10px auto 0; display: block; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #die.rolling { animation: none; }
+    button.roll { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>The d20 Oracle</h1>
+    <p class="sub">Ask. Roll. Obey the die.</p>
+  </header>
+
+  <div class="die-stage">
+    <svg id="die" viewBox="0 0 200 200" role="img" aria-label="Twenty-sided die">
+      <g id="dieArt" stroke="var(--gold)" stroke-width="2.5" fill="none" stroke-linejoin="round">
+        <polygon id="rim" points="100,10 178,55 178,145 100,190 22,145 22,55"/>
+        <polygon points="100,38 152,128 48,128" stroke-width="1.4" opacity="0.7"/>
+        <line x1="100" y1="38" x2="100" y2="10" stroke-width="1.4" opacity="0.55"/>
+        <line x1="152" y1="128" x2="178" y2="145" stroke-width="1.4" opacity="0.55"/>
+        <line x1="48"  y1="128" x2="22"  y2="145" stroke-width="1.4" opacity="0.55"/>
+        <line x1="152" y1="128" x2="178" y2="55"  stroke-width="1.1" opacity="0.4"/>
+        <line x1="48"  y1="128" x2="22"  y2="55"  stroke-width="1.1" opacity="0.4"/>
+        <line x1="100" y1="38"  x2="178" y2="55"  stroke-width="1.1" opacity="0.4"/>
+        <line x1="100" y1="38"  x2="22"  y2="55"  stroke-width="1.1" opacity="0.4"/>
+        <line x1="100" y1="190" x2="48"  y2="128" stroke-width="1.1" opacity="0.4"/>
+        <line x1="100" y1="190" x2="152" y2="128" stroke-width="1.1" opacity="0.4"/>
+      </g>
+      <text id="dieNum" x="100" y="118" text-anchor="middle">?</text>
+    </svg>
+  </div>
+
+  <div class="verdict" aria-live="polite">
+    <p class="tier" id="tier">The die awaits</p>
+    <p class="line" id="line"><em>Ask your question, then roll.</em></p>
+  </div>
+
+  <form id="askForm">
+    <input type="text" id="question" placeholder="Should I…?" autocomplete="off" maxlength="120" aria-label="Your question for the oracle">
+    <button type="submit" class="roll" id="rollBtn">Roll the d20</button>
+  </form>
+
+  <div class="legend" aria-hidden="true">
+    <span><b style="color:var(--crit)">1</b> flee</span>
+    <span><b style="color:var(--bad)">2–7</b> no</span>
+    <span><b style="color:var(--murky)">8–13</b> murky</span>
+    <span><b style="color:var(--good)">14–19</b> yes</span>
+    <span><b style="color:var(--gold)">20</b> destiny</span>
+  </div>
+
+  <section class="history">
+    <h2>Past judgements</h2>
+    <ul id="log"></ul>
+    <button class="clear" id="clearBtn" hidden>burn the records</button>
+  </section>
+</main>
+
+<script>
+const TIERS = [
+  { min:1,  max:1,  label:"Critical failure", color:"var(--crit)", cls:"nat1", lines:[
+    "Absolutely not. The universe just laughed at you.",
+    "Run. Do not walk. Abandon this plan entirely.",
+    "The gods have spoken, and they said no. Loudly."
+  ]},
+  { min:2,  max:7,  label:"Unfavorable", color:"var(--bad)", cls:"", lines:[
+    "The die says no. Trust it.",
+    "This path leads to regret. Choose another.",
+    "Not today. The omens are bad.",
+    "A hard pass from the fates."
+  ]},
+  { min:8,  max:13, label:"Uncertain", color:"var(--murky)", cls:"", lines:[
+    "The fates are murky. Proceed with caution.",
+    "Maybe… but bring backup.",
+    "Possible, though the cost may be high.",
+    "The die shrugs. Your call, adventurer."
+  ]},
+  { min:14, max:19, label:"Favorable", color:"var(--good)", cls:"", lines:[
+    "The omens are good. Go for it.",
+    "Yes — fortune favors you here.",
+    "The path is clear. Take it.",
+    "A solid yes from the die."
+  ]},
+  { min:20, max:20, label:"Natural twenty", color:"var(--gold)", cls:"nat20", lines:[
+    "Destiny calls. Do it immediately, and do it loudly.",
+    "The universe itself conspires in your favor. Go.",
+    "Legendary success awaits. This is your moment."
+  ]}
+];
+
+const die = document.getElementById("die");
+const dieNum = document.getElementById("dieNum");
+const dieArt = document.getElementById("dieArt");
+const tierEl = document.getElementById("tier");
+const lineEl = document.getElementById("line");
+const form = document.getElementById("askForm");
+const qInput = document.getElementById("question");
+const rollBtn = document.getElementById("rollBtn");
+const log = document.getElementById("log");
+const clearBtn = document.getElementById("clearBtn");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const KEY = "d20-oracle-log";
+let history = [];
+try { history = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { history = []; }
+
+function tierFor(n) { return TIERS.find(t => n >= t.min && n <= t.max); }
+
+function renderLog() {
+  log.innerHTML = "";
+  if (!history.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "No judgements yet.";
+    log.appendChild(li);
+    clearBtn.hidden = true;
+    return;
+  }
+  history.slice(0, 8).forEach(e => {
+    const li = document.createElement("li");
+    const n = document.createElement("span");
+    n.className = "n";
+    n.textContent = e.n;
+    n.style.color = tierFor(e.n).color;
+    const q = document.createElement("span");
+    q.className = "q";
+    q.textContent = e.q || "an unspoken question";
+    li.append(n, q);
+    log.appendChild(li);
+  });
+  clearBtn.hidden = false;
+}
+
+function setDieColor(c) {
+  dieArt.setAttribute("stroke", c);
+  dieNum.style.fill = c === "var(--gold)" || c === "var(--parchment)" ? "var(--parchment)" : c;
+}
+
+function roll() {
+  const q = qInput.value.trim();
+  rollBtn.disabled = true;
+  tierEl.textContent = "The die tumbles…";
+  tierEl.style.color = "var(--muted)";
+  lineEl.textContent = "";
+  die.classList.remove("nat1", "nat20");
+  die.classList.add("rolling");
+  setDieColor("var(--gold)");
+  dieNum.style.fill = "var(--parchment)";
+
+  const duration = reduceMotion ? 300 : 1100;
+  const tick = setInterval(() => { dieNum.textContent = 1 + Math.floor(Math.random() * 20); }, 75);
+
+  setTimeout(() => {
+    clearInterval(tick);
+    die.classList.remove("rolling");
+    const n = 1 + Math.floor(Math.random() * 20);
+    const t = tierFor(n);
+    dieNum.textContent = n;
+    setDieColor(t.color);
+    if (t.cls) die.classList.add(t.cls);
+    tierEl.textContent = t.label;
+    tierEl.style.color = t.color;
+    lineEl.textContent = t.lines[Math.floor(Math.random() * t.lines.length)];
+    if (navigator.vibrate) navigator.vibrate(n === 20 ? [40, 60, 40, 60, 120] : n === 1 ? [200] : 60);
+    history.unshift({ n, q, at: Date.now() });
+    history = history.slice(0, 50);
+    try { localStorage.setItem(KEY, JSON.stringify(history)); } catch (e) {}
+    renderLog();
+    rollBtn.disabled = false;
+  }, duration);
+}
+
+form.addEventListener("submit", e => { e.preventDefault(); if (!rollBtn.disabled) roll(); });
+clearBtn.addEventListener("click", () => {
+  history = [];
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  renderLog();
+});
+renderLog();
+
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+}
+</script>
+</body>
+</html>
