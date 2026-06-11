@@ -189,7 +189,7 @@
   </div>
 
   <form id="askForm">
-    <input type="text" id="question" placeholder="Should I…?" autocomplete="off" maxlength="120" aria-label="Your question for the oracle">
+    <input type="text" id="question" placeholder="Should I… ? or tacos or burgers?" autocomplete="off" maxlength="120" aria-label="Your question for the oracle">
     <button type="submit" class="roll" id="rollBtn">Roll the d20</button>
   </form>
 
@@ -209,6 +209,47 @@
 </main>
 
 <script>
+// ── This-or-That detection ──────────────────────────────────────────────────
+function parseChoice(q) {
+  // Patterns: "A or B", "A or B?", "should I do A or B", "tacos or burgers"
+  const patterns = [
+    /^(?:should\s+i\s+(?:have|eat|get|do|pick|choose|go\s+with)\s+)?(.+?)\s+or\s+(.+?)[\?!\.]*$/i,
+    /^(?:which\s+(?:is|should\s+i(?:\s+choose)?)\s*[:\-]?\s*)(.+?)\s+or\s+(.+?)[\?!\.]*$/i,
+  ];
+  for (const re of patterns) {
+    const m = q.match(re);
+    if (m) {
+      const a = m[1].trim().replace(/^(a|an|the)\s+/i, "");
+      const b = m[2].trim().replace(/^(a|an|the)\s+/i, "");
+      // Reject if either side looks like a fragment < 2 chars or is a stop word
+      if (a.length >= 2 && b.length >= 2) return { a, b };
+    }
+  }
+  return null;
+}
+
+const CHOICE_LINES = {
+  nat20:  (w, l) => [`⚔️ ${w.toUpperCase()}. The die has never been more certain.`, `🎲 A natural twenty — ${w} is your destiny. ${l} weeps.`, `✨ The Oracle roars: ${w}! There is no other answer.`],
+  high:   (w, l) => [`The fates favor ${w}. ${l} will have to wait.`, `${w} — the die has spoken clearly.`, `Go with ${w}. The omens are strong.`],
+  murky:  (w, l) => [`The die leans toward ${w}… but ${l} lingers in the shadows.`, `${w} — barely. The Oracle is not thrilled.`, `${w}, I suppose. The die is lukewarm at best.`],
+  low:    (w, l) => [`Against all wisdom, the die chose ${w}. Proceed at your own risk.`, `${w} — though the fates grimace.`, `${w}. The Oracle regrets this.`],
+  nat1:   (w, l) => [`Neither. Flee. Abandon both ${w} and ${l} immediately.`, `The die has shattered reality — even ${w} is cursed today.`, `A critical failure. You should not have asked.`],
+};
+
+function choiceVerdict(n, a, b) {
+  // High roll → first option parsed wins; low roll → second option wins
+  // Nat1 → neither; Nat20 → huge win for first option
+  let winner, loser, bucket;
+  if (n === 1)       { bucket = "nat1";  winner = a; loser = b; }
+  else if (n === 20) { bucket = "nat20"; winner = a; loser = b; }
+  else if (n >= 14)  { bucket = "high";  winner = a; loser = b; }
+  else if (n >= 8)   { bucket = "murky"; winner = n >= 11 ? a : b; loser = n >= 11 ? b : a; }
+  else               { bucket = "low";   winner = b; loser = a; }
+  const lines = CHOICE_LINES[bucket](winner, loser);
+  return { winner, loser, bucket, line: lines[Math.floor(Math.random() * lines.length)] };
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 const TIERS = [
   { min:1,  max:1,  label:"Critical failure", color:"var(--crit)", cls:"nat1", lines:[
     "Absolutely not. The universe just laughed at you.",
@@ -290,8 +331,9 @@ function setDieColor(c) {
 
 function roll() {
   const q = qInput.value.trim();
+  const choice = parseChoice(q);
   rollBtn.disabled = true;
-  tierEl.textContent = "The die tumbles…";
+  tierEl.textContent = choice ? "The die decides…" : "The die tumbles…";
   tierEl.style.color = "var(--muted)";
   lineEl.textContent = "";
   die.classList.remove("nat1", "nat20");
@@ -310,9 +352,18 @@ function roll() {
     dieNum.textContent = n;
     setDieColor(t.color);
     if (t.cls) die.classList.add(t.cls);
-    tierEl.textContent = t.label;
-    tierEl.style.color = t.color;
-    lineEl.textContent = t.lines[Math.floor(Math.random() * t.lines.length)];
+
+    if (choice) {
+      const cv = choiceVerdict(n, choice.a, choice.b);
+      tierEl.textContent = cv.bucket === "nat1" ? "Critical failure" : cv.bucket === "nat20" ? "Natural twenty" : `The die chooses: ${cv.winner}`;
+      tierEl.style.color = t.color;
+      lineEl.textContent = cv.line;
+    } else {
+      tierEl.textContent = t.label;
+      tierEl.style.color = t.color;
+      lineEl.textContent = t.lines[Math.floor(Math.random() * t.lines.length)];
+    }
+
     if (navigator.vibrate) navigator.vibrate(n === 20 ? [40, 60, 40, 60, 120] : n === 1 ? [200] : 60);
     history.unshift({ n, q, at: Date.now() });
     history = history.slice(0, 50);
